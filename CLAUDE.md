@@ -72,10 +72,13 @@ CameraState (memory only): position, azimuth, elevation (deg), distance (m).
 ## Structure
 src/navigation, src/screens, src/three (PlyModel, OrbitCamera), src/hooks (useDeviceOrientation,
 useSettings), src/storage (maps, settings), src/utils (ply, colors), src/types.ts.
-Bundled models in assets/models/ (metro assetExts includes 'ply'): sim_facility.ply (real final
-map from ~/twin-mapping, 8 cm voxels), plus generated sample_room/sample_torus.
-`scripts/prepare-maps.mjs` voxel-downsamples any PLY (handles PCL exports with normals/camera
-element). `test-maps/` (gitignored) holds real twin-mapping maps for import testing.
+Bundled models in assets/models/ (metro assetExts includes 'ply'; credits in assets/models/CREDITS.md):
+sim_facility (own final map, Z-up), bundlefusion_copyroom (real RGB-D SLAM scan, levelled, Z-up),
+icl_livingroom / icl_office (synthetic, no colour, Y-up), stanford_bunny (ASCII mesh, Y-up).
+Scripts: `prepare-maps.mjs` voxel-downsamples any PLY (handles PCL exports with normals/camera
+element; `--no-color`); `align-mesh.mjs` levels tilted mesh scans (face-normal up estimate +
+Manhattan wall heading); `generate-samples.mjs` writes synthetic test files to test-maps/generated.
+`test-maps/` (gitignored) holds real twin-mapping maps for import testing.
 
 ## Source maps (~/twin-mapping)
 Final maps: `data/runs/<RUN>/map/map_clean.ply` (DUFOMap-cleaned, xyz+rgb, Z-up, ~1.2M points,

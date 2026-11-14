@@ -1,4 +1,4 @@
-// Generates bundled PLY test models in assets/models/.
+// Generates synthetic PLY test files in test-maps/generated/ (not bundled; handy for import tests).
 //   node scripts/generate-samples.mjs
 //
 // sample_room.ply  - binary little-endian point cloud with RGB, Z-up (like a SLAM/ROS export).
@@ -8,7 +8,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const outDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'models');
+const outDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'test-maps', 'generated');
 mkdirSync(outDir, { recursive: true });
 
 // Deterministic PRNG so regenerating produces identical files.

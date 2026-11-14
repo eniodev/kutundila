@@ -110,6 +110,7 @@ export default function LibraryScreen({ navigation }: Props) {
           >
             <Text style={styles.cardTitle}>{s.name}</Text>
             <Text style={styles.cardSub}>{s.description}</Text>
+            <Text style={styles.credit}>{s.credit}</Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -165,6 +166,7 @@ const useStyles = makeStyles((colors) =>
     overflow: 'hidden',
   },
   cardSub: { color: colors.textMuted, fontSize: 13 },
+  credit: { color: colors.textMuted, fontSize: 11, fontStyle: 'italic', opacity: 0.8 },
   pressed: { opacity: 0.7 },
   fab: {
     position: 'absolute',

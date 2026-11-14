@@ -1,14 +1,19 @@
 // Voxel-grid downsampling for PLY point clouds, producing app-friendly files
 // (binary little-endian, float x/y/z + uchar r/g/b).
 //
-//   node scripts/prepare-maps.mjs <input.ply> <output.ply> [voxelMeters=0.03]
+//   node scripts/prepare-maps.mjs <input.ply> <output.ply> [voxelMeters=0.03] [--no-color]
+//
+//   --no-color  write xyz only (e.g. synthetic clouds whose colours are all white)
+//   Tilted mesh scans: level them first with scripts/align-mesh.mjs.
 //
 // Reads binary_little_endian or ascii PLYs with any vertex properties (e.g. PCL/RTAB-Map
 // exports with normals, curvature and an extra "camera" element). Each occupied voxel becomes
 // one point at the average position and color of the points inside it.
 import { readFileSync, writeFileSync } from 'node:fs';
 
-const [, , input, output, voxelArg] = process.argv;
+const flags = process.argv.filter((a) => a.startsWith('--'));
+const [, , input, output, voxelArg] = process.argv.filter((a) => !a.startsWith('--'));
+const noColor = flags.includes('--no-color');
 if (!input || !output) {
   console.error('usage: node scripts/prepare-maps.mjs <input.ply> <output.ply> [voxelMeters]');
   process.exit(1);
@@ -45,7 +50,7 @@ if (vertex.props.some((p) => p.list)) throw new Error('list properties in vertex
 const idx = (names) => vertex.props.findIndex((p) => names.includes(p.name));
 const ix = idx(['x']), iy = idx(['y']), iz = idx(['z']);
 const ir = idx(['red', 'r', 'diffuse_red']), ig = idx(['green', 'g', 'diffuse_green']), ib = idx(['blue', 'b', 'diffuse_blue']);
-const hasColor = ir >= 0 && ig >= 0 && ib >= 0;
+const hasColor = !noColor && ir >= 0 && ig >= 0 && ib >= 0;
 
 // Read every vertex as an array of numbers.
 const n = vertex.count;
@@ -94,19 +99,23 @@ for (let i = 0; i < n; i++) {
   c[6]++;
 }
 
-const out = Buffer.alloc(cells.size * 15);
+const pts = [...cells.values()].map((c) => [c[0] / c[6], c[1] / c[6], c[2] / c[6], c[3] / c[6], c[4] / c[6], c[5] / c[6]]);
+
+const stride = hasColor ? 15 : 12;
+const out = Buffer.alloc(pts.length * stride);
 let o = 0;
-for (const c of cells.values()) {
-  const k = c[6];
-  out.writeFloatLE(c[0] / k, o); out.writeFloatLE(c[1] / k, o + 4); out.writeFloatLE(c[2] / k, o + 8);
-  const col = hasColor ? [c[3] / k, c[4] / k, c[5] / k] : [180, 180, 180];
-  out.writeUInt8(Math.round(col[0]), o + 12); out.writeUInt8(Math.round(col[1]), o + 13); out.writeUInt8(Math.round(col[2]), o + 14);
-  o += 15;
+for (const p of pts) {
+  out.writeFloatLE(p[0], o); out.writeFloatLE(p[1], o + 4); out.writeFloatLE(p[2], o + 8);
+  if (hasColor) {
+    out.writeUInt8(Math.round(p[3]), o + 12); out.writeUInt8(Math.round(p[4]), o + 13); out.writeUInt8(Math.round(p[5]), o + 14);
+  }
+  o += stride;
 }
 const header =
   `ply\nformat binary_little_endian 1.0\ncomment voxel ${voxel} m from ${input.split('/').slice(-3).join('/')}\n` +
-  `element vertex ${cells.size}\nproperty float x\nproperty float y\nproperty float z\n` +
-  'property uchar red\nproperty uchar green\nproperty uchar blue\nend_header\n';
+  `element vertex ${pts.length}\nproperty float x\nproperty float y\nproperty float z\n` +
+  (hasColor ? 'property uchar red\nproperty uchar green\nproperty uchar blue\n' : '') +
+  'end_header\n';
 writeFileSync(output, Buffer.concat([Buffer.from(header, 'ascii'), out]));
 
 const f = (v) => v.toFixed(2);
