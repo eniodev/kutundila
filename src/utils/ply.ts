@@ -85,6 +85,8 @@ export function buildPlyGeometry(bytes: Uint8Array, upAxis: UpAxis, center?: Vec
   const loader = new PLYLoader();
   loader.setCustomPropertyNameMapping({ errorClass: ['class'] });
   const geometry = loader.parse(buffer);
+  // PLYLoader creates mapped attributes even when the file lacks the property (filled with NaN).
+  if (!header.hasErrorClass && geometry.getAttribute('errorClass')) geometry.deleteAttribute('errorClass');
 
   // SLAM/ROS exports are Z-up; three.js is Y-up.
   if (upAxis === 'z') geometry.rotateX(-Math.PI / 2);

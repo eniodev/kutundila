@@ -43,7 +43,8 @@ function errorColorAttribute(geometry: BufferGeometry): BufferAttribute | null {
   if (!cls) return null;
   const colors = new Float32Array(cls.count * 3);
   for (let i = 0; i < cls.count; i++) {
-    const rgb = ERROR_CLASSES[Math.min(3, Math.max(0, Math.round(cls.getX(i))))].rgb;
+    const v = Math.round(cls.getX(i));
+    const rgb = ERROR_CLASSES[Number.isFinite(v) ? Math.min(3, Math.max(0, v)) : 0].rgb;
     colors[i * 3] = rgb[0];
     colors[i * 3 + 1] = rgb[1];
     colors[i * 3 + 2] = rgb[2];
