@@ -8,7 +8,8 @@ are of simulated facilities.
 ## Hard constraints
 - Must run in **Expo Go**: no custom native modules, no dev builds. Only Expo Go packages or pure JS.
 - Install with `npx expo install <pkg>` so versions match the SDK.
-- TypeScript. UI text in **pt-PT**; code, comments and identifiers in English.
+- TypeScript. **Everything in English** (UI text, code, comments). The UI was switched from pt-PT
+  to English at the student's request (2026-11-14).
 - Node 24 via nvm (`source ~/.nvm/nvm.sh && nvm use 24`). The default shell node may be v14.
 - WSL2: run the dev server with `npm run start:tunnel` so the phone can reach it.
 - Network quirks on this machine: the global ~/.npmrc points to a private registry, so the repo
@@ -33,17 +34,18 @@ use bytes/arrayBuffer; no base64, no fetch('file://')), AsyncStorage, expo-crypt
 react-native-gesture-handler v2.
 
 ## Screens
-1. Library (initial): map cards, FAB "+ Importar PLY", empty state.
-2. MapDetails: preview placeholder, metadata, "Abrir em 3D", "Apagar mapa" (confirm).
-3. Viewer: full-screen canvas, loading indicator, HUD, toggle "Gestos | Giroscópio",
-   "Recentrar", "Definições".
-4. Settings: point size, color mode (Original / Altura), gyro sensitivity, smoothing, "Repor valores".
+1. Library (initial): imported maps, bundled sample models, FAB "+ Import PLY", empty state.
+2. MapDetails: preview placeholder, metadata, up-axis toggle, "Open in 3D", "Delete map" (confirm).
+3. Viewer: full-screen canvas, loading indicator, HUD, toggle "Touch | Gyro", "Recenter", "Settings".
+4. Settings: point size, colour (Original / By height), gyro control mode, sensitivity, smoothing,
+   invert, sensor diagnostics, "Reset to defaults".
+5. SensorDebug: raw DeviceMotion values + derived heading/pitch/roll.
 
 ## Data model
 Map: id, name, filePath, importedAt (ISO), sizeBytes, format ('ascii'|'binary'), pointCount,
 hasFaces, hasColor, upAxis ('z'|'y', default 'z'), dimensions {x,y,z} m, center {x,y,z}.
-Settings defaults: pointSize 0.02, colorMode 'original', gyroEnabled false, gyroSensitivity 1.5,
-smoothing 0.1.
+Settings defaults: pointSize 0.02, colorMode 'original', gyroEnabled false, gyroMode 'tilt',
+gyroInvert false, gyroSensitivity 1.5, smoothing 0.1.
 CameraState (memory only): position, azimuth, elevation (deg), distance (m).
 
 ## Design decisions
@@ -56,15 +58,25 @@ CameraState (memory only): position, azimuth, elevation (deg), distance (m).
 - Camera: spherical coords, lookAt origin; x = r·cos(e)·sin(a), y = r·sin(e), z = r·cos(e)·cos(a).
   Gesture/sensor input writes to refs; useFrame reads the refs; HUD state is throttled to ~10 Hz.
 - Gestures: RNGH Pan + Pinch (Simultaneous), `.runOnJS(true)`. Don't use drei OrbitControls.
-- Gyro: DeviceMotion `rotation` (not raw Gyroscope), setUpdateInterval(16), offsets on recenter,
-  lerp smoothing, elev clamp [0.1, 1.4]. The yaw source (gamma vs alpha) stays switchable until
-  tested on a phone. Request permission on iOS. Beware Euler issues near beta ≈ 90°.
+- Gyro: DeviceMotion `rotation` (not raw Gyroscope), setUpdateInterval(16). Raw beta/gamma hit gimbal
+  lock when the phone is upright, so `anglesFromRotation` (src/hooks/useDeviceOrientation.ts)
+  derives heading/pitch from the back-of-phone direction and roll from gravity. Modes: 'tilt'
+  (steering roll → azimuth) and 'look' (heading → azimuth); pitch → elevation in both. Deltas are
+  relative to a reference pose captured on enable/recenter, applied on top of a base orbit pose.
+  Lerp smoothing, elev clamp [0.1, 1.4], invert setting. Pinch still zooms in gyro mode.
 - Color by height: cache the generated color buffer and keep the original colors so switching is instant.
 
 ## Structure
 src/navigation, src/screens, src/three (PlyModel, OrbitCamera), src/hooks (useDeviceOrientation,
 useSettings), src/storage (maps, settings), src/utils (ply, colors), src/types.ts.
-Test models in assets/models/ (metro assetExts includes 'ply').
+Bundled models in assets/models/ (metro assetExts includes 'ply'): sim_facility.ply (real final
+map from ~/twin-mapping, 8 cm voxels), plus generated sample_room/sample_torus.
+`scripts/prepare-maps.mjs` voxel-downsamples any PLY (handles PCL exports with normals/camera
+element). `test-maps/` (gitignored) holds real twin-mapping maps for import testing.
+
+## Source maps (~/twin-mapping)
+Final maps: `data/runs/<RUN>/map/map_clean.ply` (DUFOMap-cleaned, xyz+rgb, Z-up, ~1.2M points,
+~24 × 16 × 2.6 m for the simulated facility). Raw RTAB-Map export: `export/rtabmap_cloud.ply`.
 
 ## Development order
 0 env + scaffold → 1 navigation/structure → 2 3D spike (bundled PLYs) → 2b sensor logging spike →

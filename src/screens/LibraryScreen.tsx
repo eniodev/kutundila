@@ -16,12 +16,12 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Library'>;
 const confirmLarge = (picked: PickedPly) =>
   new Promise<boolean>((resolve) =>
     Alert.alert(
-      'Mapa muito grande',
-      `Este ficheiro tem ${fmtInt(picked.header.vertexCount)} pontos. A importação pode ser lenta ou ` +
-        'falhar por falta de memória. Recomenda-se reduzir a densidade (voxel grid) antes de importar.',
+      'Very large map',
+      `This file has ${fmtInt(picked.header.vertexCount)} points. Importing may be slow or run out of ` +
+        'memory. Downsampling it first (voxel grid) is recommended.',
       [
-        { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
-        { text: 'Importar mesmo assim', onPress: () => resolve(true) },
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Import anyway', onPress: () => resolve(true) },
       ],
       { cancelable: true, onDismiss: () => resolve(false) },
     ),
@@ -32,12 +32,11 @@ export default function LibraryScreen({ navigation }: Props) {
   const [maps, setMaps] = useState<MapMeta[] | null>(null);
   const [importing, setImporting] = useState(false);
 
-  // TEMP (step 2b): entry point for the sensor test screen.
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <Pressable hitSlop={8} onPress={() => navigation.navigate('SensorDebug')}>
-          <Text style={{ color: colors.accent, fontWeight: '600' }}>Sensores</Text>
+        <Pressable hitSlop={8} onPress={() => navigation.navigate('Settings')}>
+          <Text style={{ color: colors.accent, fontWeight: '600' }}>Settings</Text>
         </Pressable>
       ),
     });
@@ -60,7 +59,7 @@ export default function LibraryScreen({ navigation }: Props) {
       setMaps(await listMaps());
       navigation.navigate('MapDetails', { mapId: map.id });
     } catch (e) {
-      Alert.alert('Não foi possível importar', e instanceof Error ? e.message : String(e));
+      Alert.alert('Import failed', e instanceof Error ? e.message : String(e));
     } finally {
       setImporting(false);
     }
@@ -69,15 +68,15 @@ export default function LibraryScreen({ navigation }: Props) {
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 96 }]}>
-        <Text style={styles.section}>Os meus mapas</Text>
+        <Text style={styles.section}>My maps</Text>
         {maps === null ? (
           <ActivityIndicator color={colors.accent} />
         ) : maps.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>Ainda não há mapas</Text>
+            <Text style={styles.emptyTitle}>No maps yet</Text>
             <Text style={styles.emptyText}>
-              Exporte um mapa do robô em formato PLY, copie-o para o telemóvel e toque em
-              “+ Importar PLY”.
+              Export a map from the robot as a PLY file, copy it to this phone (Files, Drive, AirDrop…)
+              and tap “+ Import PLY”.
             </Text>
           </View>
         ) : (
@@ -89,18 +88,18 @@ export default function LibraryScreen({ navigation }: Props) {
             >
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle} numberOfLines={1}>{m.name}</Text>
-                <Text style={styles.badge}>{m.hasFaces ? 'Malha' : 'Nuvem de pontos'}</Text>
+                <Text style={styles.badge}>{m.hasFaces ? 'Mesh' : 'Point cloud'}</Text>
               </View>
               <Text style={styles.cardSub}>
-                {m.format === 'binary' ? 'Binário' : 'ASCII'} · {fmtInt(m.pointCount)}{' '}
-                {m.hasFaces ? 'vértices' : 'pontos'} · {fmt(m.dimensions.x, 1)} × {fmt(m.dimensions.z, 1)} ×{' '}
+                {m.format === 'binary' ? 'Binary' : 'ASCII'} · {fmtInt(m.pointCount)}{' '}
+                {m.hasFaces ? 'vertices' : 'points'} · {fmt(m.dimensions.x, 1)} × {fmt(m.dimensions.z, 1)} ×{' '}
                 {fmt(m.dimensions.y, 1)} m
               </Text>
             </Pressable>
           ))
         )}
 
-        <Text style={styles.section}>Modelos de teste</Text>
+        <Text style={styles.section}>Sample models</Text>
         {SAMPLES.map((s) => (
           <Pressable
             key={s.id}
@@ -118,14 +117,14 @@ export default function LibraryScreen({ navigation }: Props) {
         style={({ pressed }) => [styles.fab, { bottom: insets.bottom + 24 }, (pressed || importing) && styles.pressed]}
         onPress={onImport}
       >
-        <Text style={styles.fabText}>+ Importar PLY</Text>
+        <Text style={styles.fabText}>+ Import PLY</Text>
       </Pressable>
 
       {importing && (
         <View style={styles.overlay}>
           <View style={styles.overlayBox}>
             <ActivityIndicator size="large" color={colors.accent} />
-            <Text style={styles.overlayText}>A importar e a analisar o mapa…</Text>
+            <Text style={styles.overlayText}>Importing and analysing the map…</Text>
           </View>
         </View>
       )}

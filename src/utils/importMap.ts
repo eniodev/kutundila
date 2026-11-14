@@ -25,7 +25,7 @@ export async function pickPlyFile(): Promise<PickedPly | null> {
   const asset = result.assets[0];
 
   if (!asset.name.toLowerCase().endsWith('.ply')) {
-    throw new Error('Escolha um ficheiro com a extensão .ply.');
+    throw new Error('Please choose a file with the .ply extension.');
   }
 
   // Read only the first chunk for the header.

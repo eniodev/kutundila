@@ -29,9 +29,9 @@ export function parsePlyHeader(bytes: Uint8Array): PlyHeader {
   let text = '';
   for (let i = 0; i < limit; i++) text += String.fromCharCode(bytes[i]);
 
-  if (!text.startsWith('ply')) throw new Error('O ficheiro não é um PLY válido.');
+  if (!text.startsWith('ply')) throw new Error('This is not a valid PLY file.');
   const endIdx = text.indexOf(END_HEADER);
-  if (endIdx < 0) throw new Error('Cabeçalho PLY incompleto.');
+  if (endIdx < 0) throw new Error('Incomplete PLY header.');
   const lineEnd = text.indexOf('\n', endIdx);
   const headerLength = (lineEnd < 0 ? endIdx + END_HEADER.length : lineEnd) + 1;
 
@@ -60,7 +60,7 @@ export function parsePlyHeader(bytes: Uint8Array): PlyHeader {
     }
   }
 
-  if (!format) throw new Error('Formato PLY não especificado.');
+  if (!format) throw new Error('PLY format not specified.');
   return { format, vertexCount, faceCount, hasColor, headerLength };
 }
 
@@ -86,8 +86,11 @@ export function buildPlyGeometry(bytes: Uint8Array, upAxis: UpAxis): LoadedPly {
   geometry.center();
   geometry.computeBoundingSphere();
 
-  if (header.faceCount > 0 && !geometry.getAttribute('normal')) {
-    geometry.computeVertexNormals();
+  if (header.faceCount > 0) {
+    if (!geometry.getAttribute('normal')) geometry.computeVertexNormals();
+  } else if (geometry.getAttribute('normal')) {
+    // Point clouds aren't lit, so normals (e.g. from PCL exports) only cost memory.
+    geometry.deleteAttribute('normal');
   }
 
   return {

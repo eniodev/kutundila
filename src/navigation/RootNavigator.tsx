@@ -20,15 +20,15 @@ export default function RootNavigator() {
   return (
     <NavigationContainer theme={theme}>
       <Stack.Navigator initialRouteName="Library">
-        <Stack.Screen name="Library" component={LibraryScreen} options={{ title: 'Mapas' }} />
-        <Stack.Screen name="MapDetails" component={MapDetailsScreen} options={{ title: 'Detalhes do mapa' }} />
+        <Stack.Screen name="Library" component={LibraryScreen} options={{ title: 'Maps' }} />
+        <Stack.Screen name="MapDetails" component={MapDetailsScreen} options={{ title: 'Map details' }} />
         <Stack.Screen
           name="Viewer"
           component={ViewerScreen}
-          options={{ title: 'Visualizador 3D', headerTransparent: true, headerTintColor: colors.text }}
+          options={{ title: '3D viewer', headerTransparent: true, headerTintColor: colors.text }}
         />
-        <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Definições' }} />
-        <Stack.Screen name="SensorDebug" component={SensorDebugScreen} options={{ title: 'Sensores (teste)' }} />
+        <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+        <Stack.Screen name="SensorDebug" component={SensorDebugScreen} options={{ title: 'Sensor diagnostics' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

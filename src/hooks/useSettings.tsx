@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { loadSettings, saveSettings } from '../storage/settings';
 import { DEFAULT_SETTINGS, type Settings } from '../types';
@@ -23,10 +23,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const update = useCallback((patch: Partial<Settings>) => {
     setSettings((prev) => {
       const next = { ...prev, ...patch };
-      saveSettings(next).catch(() => {});
+      // Debounced so dragging a slider doesn't write to storage on every step.
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => saveSettings(next).catch(() => {}), 300);
       return next;
     });
   }, []);

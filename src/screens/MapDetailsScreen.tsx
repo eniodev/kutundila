@@ -7,16 +7,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { deleteMap, getMap } from '../storage/maps';
 import { colors } from '../theme';
 import type { MapMeta, RootStackParamList, UpAxis } from '../types';
-import { fmt, fmtBytes, fmtInt } from '../utils/format';
+import { fmt, fmtBytes, fmtDate, fmtInt } from '../utils/format';
 import { changeUpAxis } from '../utils/importMap';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MapDetails'>;
-
-const fmtDate = (iso: string) => {
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
-};
 
 export default function MapDetailsScreen({ route, navigation }: Props) {
   const { mapId } = route.params;
@@ -43,7 +37,7 @@ export default function MapDetailsScreen({ route, navigation }: Props) {
   if (map === null) {
     return (
       <View style={[styles.root, styles.center]}>
-        <Text style={styles.muted}>Mapa não encontrado.</Text>
+        <Text style={styles.muted}>Map not found.</Text>
       </View>
     );
   }
@@ -54,17 +48,17 @@ export default function MapDetailsScreen({ route, navigation }: Props) {
     try {
       setMap(await changeUpAxis(map, axis));
     } catch (e) {
-      Alert.alert('Erro', e instanceof Error ? e.message : String(e));
+      Alert.alert('Error', e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
   };
 
   const onDelete = () =>
-    Alert.alert('Apagar mapa', `Apagar “${map.name}”? Esta ação não pode ser desfeita.`, [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert('Delete map', `Delete “${map.name}”? This cannot be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Apagar',
+        text: 'Delete',
         style: 'destructive',
         onPress: async () => {
           await deleteMap(map.id);
@@ -75,20 +69,20 @@ export default function MapDetailsScreen({ route, navigation }: Props) {
 
   const d = map.dimensions;
   const rows: [string, string][] = [
-    ['Tipo', map.hasFaces ? 'Malha (com faces)' : 'Nuvem de pontos'],
-    [map.hasFaces ? 'Vértices' : 'Pontos', fmtInt(map.pointCount)],
-    ['Dimensões (L × P × A)', `${fmt(d.x)} × ${fmt(d.z)} × ${fmt(d.y)} m`],
-    ['Formato', map.format === 'binary' ? 'Binário' : 'ASCII'],
-    ['Cor', map.hasColor ? 'Sim' : 'Não'],
-    ['Tamanho', fmtBytes(map.sizeBytes)],
-    ['Importado em', fmtDate(map.importedAt)],
+    ['Type', map.hasFaces ? 'Mesh (with faces)' : 'Point cloud'],
+    [map.hasFaces ? 'Vertices' : 'Points', fmtInt(map.pointCount)],
+    ['Size (W × D × H)', `${fmt(d.x)} × ${fmt(d.z)} × ${fmt(d.y)} m`],
+    ['Format', map.format === 'binary' ? 'Binary' : 'ASCII'],
+    ['Colour', map.hasColor ? 'Yes' : 'No'],
+    ['File size', fmtBytes(map.sizeBytes)],
+    ['Imported', fmtDate(map.importedAt)],
   ];
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
       <View style={styles.preview}>
         <Text style={styles.previewIcon}>{map.hasFaces ? '◆' : '⁘'}</Text>
-        <Text style={styles.muted}>{map.hasFaces ? 'Malha 3D' : 'Nuvem de pontos 3D'}</Text>
+        <Text style={styles.muted}>{map.hasFaces ? '3D mesh' : '3D point cloud'}</Text>
       </View>
 
       <View style={styles.card}>
@@ -101,8 +95,8 @@ export default function MapDetailsScreen({ route, navigation }: Props) {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.key}>Eixo vertical</Text>
-        <Text style={styles.hint}>Mapas de SLAM/ROS costumam usar Z para cima. Mude se o mapa aparecer deitado.</Text>
+        <Text style={styles.key}>Up axis</Text>
+        <Text style={styles.hint}>SLAM/ROS maps are usually Z-up. Switch if the map appears lying on its side.</Text>
         <View style={styles.segment}>
           {(['z', 'y'] as UpAxis[]).map((a) => (
             <Pressable
@@ -112,7 +106,7 @@ export default function MapDetailsScreen({ route, navigation }: Props) {
               style={[styles.segmentItem, map.upAxis === a && styles.segmentActive]}
             >
               <Text style={[styles.segmentText, map.upAxis === a && styles.segmentTextActive]}>
-                {a.toUpperCase()} para cima
+                {a.toUpperCase()} up
               </Text>
             </Pressable>
           ))}
@@ -124,11 +118,11 @@ export default function MapDetailsScreen({ route, navigation }: Props) {
         style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
         onPress={() => navigation.navigate('Viewer', { source: { kind: 'map', mapId: map.id } })}
       >
-        <Text style={styles.primaryText}>Abrir em 3D</Text>
+        <Text style={styles.primaryText}>Open in 3D</Text>
       </Pressable>
 
       <Pressable style={({ pressed }) => [styles.danger, pressed && styles.pressed]} onPress={onDelete}>
-        <Text style={styles.dangerText}>Apagar mapa</Text>
+        <Text style={styles.dangerText}>Delete map</Text>
       </Pressable>
     </ScrollView>
   );

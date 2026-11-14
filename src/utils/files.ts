@@ -9,7 +9,7 @@ export async function readFileBytes(uri: string): Promise<Uint8Array> {
 export async function readAssetBytes(module: number): Promise<Uint8Array> {
   const asset = Asset.fromModule(module);
   await asset.downloadAsync();
-  if (!asset.localUri) throw new Error('Não foi possível carregar o modelo de teste.');
+  if (!asset.localUri) throw new Error('Could not load the sample model.');
   return readFileBytes(asset.localUri);
 }
 

@@ -1,22 +1,32 @@
+import { useMemo } from 'react';
 import { DoubleSide, type BufferGeometry } from 'three';
+
+import type { ColorMode } from '../types';
+import { applyColorMode } from '../utils/colors';
 
 type Props = {
   geometry: BufferGeometry;
   hasFaces: boolean;
-  hasColor: boolean;
   pointSize: number;
+  colorMode: ColorMode;
 };
 
 const DEFAULT_COLOR = '#4fc3f7';
 
 /** Renders a parsed PLY as points (no faces) or a lit mesh (with faces). */
-export function PlyModel({ geometry, hasFaces, hasColor, pointSize }: Props) {
+export function PlyModel({ geometry, hasFaces, pointSize, colorMode }: Props) {
+  const vertexColors = useMemo(() => applyColorMode(geometry, colorMode), [geometry, colorMode]);
+  const color = vertexColors ? '#ffffff' : DEFAULT_COLOR;
+  // Changing vertexColors needs a shader recompile, so remount the material when it flips.
+  const key = vertexColors ? 'vc' : 'flat';
+
   if (hasFaces) {
     return (
       <mesh geometry={geometry}>
         <meshStandardMaterial
-          vertexColors={hasColor}
-          color={hasColor ? '#ffffff' : DEFAULT_COLOR}
+          key={key}
+          vertexColors={vertexColors}
+          color={color}
           side={DoubleSide}
           roughness={0.8}
           metalness={0.05}
@@ -26,12 +36,7 @@ export function PlyModel({ geometry, hasFaces, hasColor, pointSize }: Props) {
   }
   return (
     <points geometry={geometry}>
-      <pointsMaterial
-        size={pointSize}
-        sizeAttenuation
-        vertexColors={hasColor}
-        color={hasColor ? '#ffffff' : DEFAULT_COLOR}
-      />
+      <pointsMaterial key={key} size={pointSize} sizeAttenuation vertexColors={vertexColors} color={color} />
     </points>
   );
 }

@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Real maps copied from twin-mapping for import testing (large, regenerable)
+/test-maps/

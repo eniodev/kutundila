@@ -2,19 +2,20 @@ import { DeviceMotion, type DeviceMotionMeasurement } from 'expo-sensors';
 import { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { anglesFromRotation } from '../hooks/useDeviceOrientation';
 import { colors } from '../theme';
 import { fmt } from '../utils/format';
 
 /**
- * TEMP (step 2b): shows raw DeviceMotion rotation so we can pick the gyro axis mapping,
- * signs and ranges on real phones before building the gyro camera.
+ * Diagnostics: raw DeviceMotion rotation plus the derived angles the gyro camera uses,
+ * to check axis signs and ranges on a real phone.
  */
 type Axis = 'alpha' | 'beta' | 'gamma';
 const AXES: Axis[] = ['alpha', 'beta', 'gamma'];
 const HINT: Record<Axis, string> = {
-  alpha: 'rodar sobre si (bússola / yaw)',
-  beta: 'inclinar para a frente / trás (pitch)',
-  gamma: 'inclinar para a esquerda / direita (roll)',
+  alpha: 'turn around (compass / yaw)',
+  beta: 'tilt forward / back (pitch)',
+  gamma: 'tilt left / right (roll)',
 };
 const DEG = 180 / Math.PI;
 
@@ -75,9 +76,9 @@ export default function SensorDebugScreen() {
 
   if (status !== 'ok') {
     const text = {
-      checking: 'A verificar o sensor…',
-      unavailable: 'DeviceMotion não está disponível neste dispositivo.',
-      denied: 'Permissão de movimento recusada.',
+      checking: 'Checking the sensor…',
+      unavailable: 'DeviceMotion is not available on this device.',
+      denied: 'Motion permission denied.',
     }[status];
     return (
       <View style={[styles.root, styles.center]}>
@@ -90,7 +91,7 @@ export default function SensorDebugScreen() {
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       <Text style={styles.muted}>
-        {Platform.OS} · {hz} Hz · orientação {m?.orientation ?? '—'}
+        {Platform.OS} · {hz} Hz · orientation {m?.orientation ?? '—'}
       </Text>
 
       {AXES.map((a) => {
@@ -112,12 +113,31 @@ export default function SensorDebugScreen() {
               <View style={[styles.barDot, { left: `${pct * 100}%` }]} />
             </View>
             <Text style={styles.muted}>
-              mín {Number.isFinite(r.min) ? fmt(r.min * DEG, 1) : '—'}° · máx{' '}
+              min {Number.isFinite(r.min) ? fmt(r.min * DEG, 1) : '—'}° · max{' '}
               {Number.isFinite(r.max) ? fmt(r.max * DEG, 1) : '—'}°
             </Text>
           </View>
         );
       })}
+
+      {rot && (
+        <View style={styles.card}>
+          <Text style={styles.axis}>Derived (used by the gyro camera)</Text>
+          {(() => {
+            const d = anglesFromRotation(rot.alpha, rot.beta, rot.gamma);
+            return (
+              <>
+                <Text style={styles.value}>heading {fmt(d.heading * DEG, 1)}°</Text>
+                <Text style={styles.value}>pitch {fmt(d.pitch * DEG, 1)}°</Text>
+                <Text style={styles.value}>roll {fmt(d.roll * DEG, 1)}°</Text>
+                <Text style={styles.hint}>
+                  heading: where the back of the phone points · pitch: up/down · roll: steering-wheel rotation
+                </Text>
+              </>
+            );
+          })()}
+        </View>
+      )}
 
       <Pressable
         style={({ pressed }) => [styles.button, pressed && { opacity: 0.6 }]}
@@ -126,13 +146,12 @@ export default function SensorDebugScreen() {
           force((n) => n + 1);
         }}
       >
-        <Text style={styles.buttonText}>Repor mín / máx</Text>
+        <Text style={styles.buttonText}>Reset min / max</Text>
       </Pressable>
 
       <Text style={styles.help}>
-        Teste: segure o telemóvel na vertical (ecrã para si), depois incline para a esquerda/direita,
-        para a frente/trás e rode sobre si. Veja que valor muda, o sinal e os limites, e o que acontece
-        perto da vertical.
+        Hold the phone upright (screen facing you), then tilt it left/right, forward/back and turn
+        around. The derived angles below are what the gyro camera uses.
       </Text>
     </ScrollView>
   );
