@@ -12,7 +12,7 @@ import { getMap, mapFile } from '../storage/maps';
 import { clamp, createOrbitState, ELEVATION_MAX, ELEVATION_MIN, type OrbitState } from '../three/orbit';
 import { OrbitCamera } from '../three/OrbitCamera';
 import { PlyModel } from '../three/PlyModel';
-import { colors } from '../theme';
+import { makeStyles, useTheme } from '../theme';
 import type { CameraState, ModelSource, RootStackParamList } from '../types';
 import { nextFrame, readAssetBytes } from '../utils/files';
 import { fmt, fmtInt } from '../utils/format';
@@ -44,6 +44,8 @@ async function loadSource(source: ModelSource): Promise<{ model: LoadedPly; name
 }
 
 export default function ViewerScreen({ route, navigation }: Props) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { source } = route.params;
   const { settings, update } = useSettings();
   const insets = useSafeAreaInsets();
@@ -122,7 +124,7 @@ export default function ViewerScreen({ route, navigation }: Props) {
         <>
           {/* Render on demand: only when the camera or the scene changes (saves CPU/GPU and battery). */}
           <Canvas style={StyleSheet.absoluteFill} camera={{ fov: 60 }} frameloop="demand">
-            <color attach="background" args={[colors.bg]} />
+            <color attach="background" args={[colors.canvas]} />
             <ambientLight intensity={0.6} />
             <directionalLight position={[5, 10, 7]} intensity={1.4} />
             <PlyModel
@@ -130,6 +132,7 @@ export default function ViewerScreen({ route, navigation }: Props) {
               hasFaces={state.model.header.faceCount > 0}
               pointSize={settings.pointSize}
               colorMode={settings.colorMode}
+              flatColor={colors.accent}
             />
             <OrbitCamera
               orbit={orbit}
@@ -208,6 +211,8 @@ function Hud({
   gyroDelta: RefObject<OrientationDelta | null> | null;
   model: LoadedPly;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const [camera, setCamera] = useState<CameraState | null>(null);
   const [delta, setDelta] = useState<OrientationDelta | null>(null);
   useEffect(() => {
@@ -248,6 +253,8 @@ function Hud({
 }
 
 function HudButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   return (
     <Pressable style={({ pressed }) => [styles.button, pressed && { opacity: 0.6 }]} onPress={onPress}>
       <Text style={styles.buttonText}>{label}</Text>
@@ -255,7 +262,8 @@ function HudButton({ label, onPress }: { label: string; onPress: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) =>
+  StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },
   muted: { color: colors.textMuted, textAlign: 'center' },
@@ -275,7 +283,7 @@ const styles = StyleSheet.create({
   segmentItem: { paddingHorizontal: 22, paddingVertical: 8, borderRadius: 17 },
   segmentActive: { backgroundColor: colors.accent },
   segmentText: { color: colors.text, fontWeight: '600' },
-  segmentTextActive: { color: '#00131c' },
+  segmentTextActive: { color: colors.onAccent },
   actions: { flexDirection: 'row', justifyContent: 'center', gap: 12 },
   button: {
     backgroundColor: colors.hudBg,
@@ -296,4 +304,5 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
   },
-});
+}),
+);

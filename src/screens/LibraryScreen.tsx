@@ -5,7 +5,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { listMaps } from '../storage/maps';
-import { colors } from '../theme';
+import { makeStyles, useTheme } from '../theme';
 import type { MapMeta, RootStackParamList } from '../types';
 import { fmt, fmtInt } from '../utils/format';
 import { importPly, LARGE_POINT_COUNT, pickPlyFile, type PickedPly } from '../utils/importMap';
@@ -28,6 +28,8 @@ const confirmLarge = (picked: PickedPly) =>
   );
 
 export default function LibraryScreen({ navigation }: Props) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [maps, setMaps] = useState<MapMeta[] | null>(null);
   const [importing, setImporting] = useState(false);
@@ -132,7 +134,8 @@ export default function LibraryScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) =>
+  StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, gap: 12 },
   section: { color: colors.textMuted, fontSize: 13, fontWeight: '600', textTransform: 'uppercase', marginTop: 8 },
@@ -172,8 +175,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     elevation: 4,
   },
-  fabText: { color: '#00131c', fontWeight: '700', fontSize: 15 },
+  fabText: { color: colors.onAccent, fontWeight: '700', fontSize: 15 },
   overlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
   overlayBox: { backgroundColor: colors.surface, borderRadius: 14, padding: 24, gap: 14, alignItems: 'center' },
   overlayText: { color: colors.text },
-});
+}),
+);

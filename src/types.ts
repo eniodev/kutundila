@@ -23,7 +23,10 @@ export type MapMeta = {
 
 export type ColorMode = 'original' | 'height';
 
+export type ThemePreference = 'system' | 'light' | 'dark';
+
 export type Settings = {
+  theme: ThemePreference;
   pointSize: number;
   colorMode: ColorMode;
   gyroEnabled: boolean;
@@ -33,6 +36,7 @@ export type Settings = {
 };
 
 export const DEFAULT_SETTINGS: Settings = {
+  theme: 'system',
   pointSize: 0.02,
   colorMode: 'original',
   gyroEnabled: false,

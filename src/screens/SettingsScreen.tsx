@@ -4,13 +4,15 @@ import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 're
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useSettings } from '../hooks/useSettings';
-import { colors } from '../theme';
-import type { ColorMode, RootStackParamList } from '../types';
+import { makeStyles, useTheme } from '../theme';
+import type { ColorMode, RootStackParamList, ThemePreference } from '../types';
 import { fmt } from '../utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
 export default function SettingsScreen({ navigation }: Props) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { settings, update, reset } = useSettings();
   const insets = useSafeAreaInsets();
 
@@ -22,7 +24,20 @@ export default function SettingsScreen({ navigation }: Props) {
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
-      <Text style={styles.section}>Display</Text>
+      <Text style={styles.section}>Appearance</Text>
+      <View style={styles.card}>
+        <Segmented<ThemePreference>
+          value={settings.theme}
+          options={[
+            { label: 'System', value: 'system' },
+            { label: 'Light', value: 'light' },
+            { label: 'Dark', value: 'dark' },
+          ]}
+          onChange={(theme) => update({ theme })}
+        />
+      </View>
+
+      <Text style={styles.section}>3D view</Text>
       <View style={styles.card}>
         <SliderRow
           label="Point size"
@@ -104,6 +119,8 @@ function SliderRow(props: {
   step: number;
   onChange: (v: number) => void;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   return (
     <View style={styles.sliderRow}>
       <View style={styles.sliderHeader}>
@@ -129,6 +146,8 @@ function Segmented<T extends string>(props: {
   options: { label: string; value: T }[];
   onChange: (v: T) => void;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   return (
     <View style={styles.segment}>
       {props.options.map((o) => {
@@ -143,9 +162,14 @@ function Segmented<T extends string>(props: {
   );
 }
 
-const Divider = () => <View style={styles.divider} />;
+function Divider() {
+  const styles = useStyles();
+  const { colors } = useTheme();
+  return <View style={styles.divider} />;
+}
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) =>
+  StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, gap: 10 },
   section: { color: colors.textMuted, fontSize: 13, fontWeight: '600', textTransform: 'uppercase', marginTop: 8 },
@@ -161,7 +185,7 @@ const styles = StyleSheet.create({
   segmentItem: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
   segmentActive: { backgroundColor: colors.accent },
   segmentText: { color: colors.textMuted, fontWeight: '600' },
-  segmentTextActive: { color: '#00131c' },
+  segmentTextActive: { color: colors.onAccent },
   link: {
     backgroundColor: colors.surface,
     borderRadius: 12,
@@ -177,4 +201,5 @@ const styles = StyleSheet.create({
   reset: { borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: colors.danger, marginTop: 8 },
   resetText: { color: colors.danger, fontWeight: '600', fontSize: 16 },
   pressed: { opacity: 0.7 },
-});
+}),
+);

@@ -10,18 +10,18 @@ type Props = {
   hasFaces: boolean;
   pointSize: number;
   colorMode: ColorMode;
+  /** Used when the model has no colours of its own. */
+  flatColor: string;
 };
 
-const DEFAULT_COLOR = '#4fc3f7';
-
 /** Renders a parsed PLY as points (no faces) or a lit mesh (with faces). */
-export function PlyModel({ geometry, hasFaces, pointSize, colorMode }: Props) {
+export function PlyModel({ geometry, hasFaces, pointSize, colorMode, flatColor }: Props) {
   const vertexColors = useMemo(() => applyColorMode(geometry, colorMode), [geometry, colorMode]);
   // Swapping the colour attribute isn't a prop change, so ask for a frame (frameloop="demand").
   useEffect(() => {
     invalidate();
-  }, [vertexColors, colorMode, pointSize]);
-  const color = vertexColors ? '#ffffff' : DEFAULT_COLOR;
+  }, [vertexColors, colorMode, pointSize, flatColor]);
+  const color = vertexColors ? '#ffffff' : flatColor;
   // Changing vertexColors needs a shader recompile, so remount the material when it flips.
   const key = vertexColors ? 'vc' : 'flat';
 

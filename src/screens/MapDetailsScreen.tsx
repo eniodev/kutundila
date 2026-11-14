@@ -5,7 +5,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { deleteMap, getMap } from '../storage/maps';
-import { colors } from '../theme';
+import { makeStyles, useTheme } from '../theme';
 import type { MapMeta, RootStackParamList, UpAxis } from '../types';
 import { fmt, fmtBytes, fmtDate, fmtInt } from '../utils/format';
 import { changeUpAxis } from '../utils/importMap';
@@ -13,6 +13,8 @@ import { changeUpAxis } from '../utils/importMap';
 type Props = NativeStackScreenProps<RootStackParamList, 'MapDetails'>;
 
 export default function MapDetailsScreen({ route, navigation }: Props) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { mapId } = route.params;
   const insets = useSafeAreaInsets();
   const [map, setMap] = useState<MapMeta | null | undefined>(undefined);
@@ -128,7 +130,8 @@ export default function MapDetailsScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) =>
+  StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { alignItems: 'center', justifyContent: 'center' },
   content: { padding: 16, gap: 14 },
@@ -153,10 +156,11 @@ const styles = StyleSheet.create({
   segmentItem: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
   segmentActive: { backgroundColor: colors.accent },
   segmentText: { color: colors.textMuted, fontWeight: '600' },
-  segmentTextActive: { color: '#00131c' },
+  segmentTextActive: { color: colors.onAccent },
   primary: { backgroundColor: colors.accent, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-  primaryText: { color: '#00131c', fontWeight: '700', fontSize: 16 },
+  primaryText: { color: colors.onAccent, fontWeight: '700', fontSize: 16 },
   danger: { borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: colors.danger },
   dangerText: { color: colors.danger, fontWeight: '600', fontSize: 16 },
   pressed: { opacity: 0.7 },
-});
+}),
+);

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { relativeRotation, rotationMatrix } from '../hooks/useDeviceOrientation';
-import { colors } from '../theme';
+import { makeStyles, useTheme } from '../theme';
 import { fmt } from '../utils/format';
 
 /**
@@ -27,6 +27,8 @@ const emptyRange = (): Range => ({
 });
 
 export default function SensorDebugScreen() {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const [status, setStatus] = useState<'checking' | 'ok' | 'unavailable' | 'denied'>('checking');
   const [m, setM] = useState<DeviceMotionMeasurement | null>(null);
   const [hz, setHz] = useState(0);
@@ -161,7 +163,8 @@ export default function SensorDebugScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) =>
+  StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { alignItems: 'center', justifyContent: 'center', padding: 24 },
   content: { padding: 16, gap: 12 },
@@ -177,4 +180,5 @@ const styles = StyleSheet.create({
   button: { alignSelf: 'center', backgroundColor: colors.surfaceAlt, borderRadius: 20, paddingHorizontal: 18, paddingVertical: 10 },
   buttonText: { color: colors.text, fontWeight: '600' },
   help: { color: colors.textMuted, fontSize: 13, lineHeight: 19 },
-});
+}),
+);

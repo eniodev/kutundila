@@ -1,4 +1,3 @@
-import { StatusBar } from 'expo-status-bar';
 import { LogBox } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -19,7 +18,6 @@ export default function App() {
       <SafeAreaProvider>
         <SettingsProvider>
           <RootNavigator />
-          <StatusBar style="light" />
         </SettingsProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
