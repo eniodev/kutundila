@@ -23,18 +23,10 @@ export type MapMeta = {
 
 export type ColorMode = 'original' | 'height';
 
-/**
- * How device motion drives the orbit:
- * - 'look': point the phone around (turn left/right = azimuth, tilt up/down = elevation)
- * - 'tilt': steer like a wheel (rotate in the screen plane = azimuth, tilt up/down = elevation)
- */
-export type GyroMode = 'look' | 'tilt';
-
 export type Settings = {
   pointSize: number;
   colorMode: ColorMode;
   gyroEnabled: boolean;
-  gyroMode: GyroMode;
   gyroInvert: boolean;
   gyroSensitivity: number;
   smoothing: number;
@@ -44,7 +36,6 @@ export const DEFAULT_SETTINGS: Settings = {
   pointSize: 0.02,
   colorMode: 'original',
   gyroEnabled: false,
-  gyroMode: 'tilt',
   gyroInvert: false,
   gyroSensitivity: 1.5,
   smoothing: 0.1,

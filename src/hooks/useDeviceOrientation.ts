@@ -1,86 +1,85 @@
 import { DeviceMotion } from 'expo-sensors';
 import { useEffect, useRef, type RefObject } from 'react';
 
-import type { GyroMode } from '../types';
+type Mat3 = [number, number, number, number, number, number, number, number, number]; // row-major
 
-/** Orientation derived from DeviceMotion.rotation, free of Euler gimbal issues. Radians. */
-export type DeviceAngles = {
-  /** Heading of the direction the back of the phone points at (around the world vertical). */
-  heading: number;
-  /** Up/down angle of that direction (−π/2 looking at the floor, +π/2 at the ceiling). */
-  pitch: number;
-  /** Steering-wheel rotation in the screen plane (0 when the phone is upright). */
-  roll: number;
-};
-
-/**
- * Converts W3C-style Euler angles (R = Rz(alpha)·Rx(beta)·Ry(gamma)) into direction-based angles.
- * Reading the device's back direction and the gravity vector avoids the gimbal lock that
- * raw beta/gamma have when the phone is held upright (beta ≈ 90°).
- */
-export function anglesFromRotation(alpha: number, beta: number, gamma: number): DeviceAngles {
+/** Rotation matrix for W3C-style Euler angles: R = Rz(alpha)·Rx(beta)·Ry(gamma). */
+export function rotationMatrix(alpha: number, beta: number, gamma: number): Mat3 {
   const cA = Math.cos(alpha), sA = Math.sin(alpha);
   const cB = Math.cos(beta), sB = Math.sin(beta);
   const cG = Math.cos(gamma), sG = Math.sin(gamma);
+  return [
+    cA * cG - sA * sB * sG, -sA * cB, cA * sG + sA * sB * cG,
+    sA * cG + cA * sB * sG, cA * cB, sA * sG - cA * sB * cG,
+    -cB * sG, sB, cB * cG,
+  ];
+}
 
-  // Back of the phone = −(device Z axis) in world coordinates.
-  const fx = -(cA * sG + sA * sB * cG);
-  const fy = -(sA * sG - cA * sB * cG);
-  const fz = -(cB * cG);
+/** Rotation of the phone around its own axes since the reference pose. Radians. */
+export type RelativeRotation = {
+  /** Around the phone's long axis: turning it left/right like a page (or turning your body). */
+  turn: number;
+  /** Around the phone's horizontal axis: top towards/away from you. */
+  tilt: number;
+  /** Around the screen normal: rotating it like a steering wheel. */
+  steer: number;
+};
 
-  // Gravity ("world up") in device coordinates = third row of R.
-  const gx = -cB * sG;
-  const gy = sB;
-
+/**
+ * Decomposes Rrel = R0ᵀ·R (rotation in the reference device frame) as Ry(turn)·Rx(tilt)·Rz(steer).
+ * Being relative to the reference pose, this is well conditioned whether the phone is upright,
+ * tilted or almost flat — unlike world-referenced Euler angles, which hit gimbal lock.
+ */
+export function relativeRotation(r0: Mat3, r: Mat3): RelativeRotation {
+  // rel[i][j] = Σk r0[k][i]·r[k][j]
+  const rel = (i: number, j: number) => r0[i] * r[j] + r0[3 + i] * r[3 + j] + r0[6 + i] * r[6 + j];
   return {
-    heading: Math.atan2(fx, fy),
-    pitch: Math.asin(Math.max(-1, Math.min(1, fz))),
-    roll: Math.atan2(-gx, gy),
+    turn: Math.atan2(rel(0, 2), rel(2, 2)),
+    tilt: Math.asin(Math.max(-1, Math.min(1, -rel(1, 2)))),
+    steer: Math.atan2(rel(1, 0), rel(1, 1)),
   };
 }
 
-/** Wraps an angle difference to (−π, π]. */
-export const wrapAngle = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
-
 export type OrientationDelta = { horizontal: number; vertical: number };
 
-/**
- * Subscribes to DeviceMotion while `enabled` and reports how far the phone has moved since the
- * reference pose (captured on enable and on `recenter`). Calls back on every sample (~60 Hz)
- * without React state, so the caller can write straight into the camera orbit.
- */
-export function useDeviceOrientation(
-  enabled: boolean,
-  mode: GyroMode,
-  onDelta: RefObject<(delta: OrientationDelta) => void>,
-) {
-  const reference = useRef<DeviceAngles | null>(null);
-  const modeRef = useRef(mode);
-  modeRef.current = mode;
+const DEADZONE = 0.002; // rad (~0.1°): ignore sensor noise when the phone is still
 
-  useEffect(() => {
-    reference.current = null;
-  }, [mode]);
+/**
+ * Subscribes to DeviceMotion while `enabled` and reports how far the phone has rotated since the
+ * reference pose (captured on enable and on `recenter`):
+ *   horizontal = turn (page-turn) + steer (steering wheel), vertical = tilt (top away = negative).
+ * Calls back without React state, so the caller can write straight into the camera orbit.
+ */
+export function useDeviceOrientation(enabled: boolean, onDelta: RefObject<(delta: OrientationDelta) => void>) {
+  const reference = useRef<Mat3 | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
     let sub: { remove: () => void } | undefined;
     let cancelled = false;
+    let last: OrientationDelta = { horizontal: NaN, vertical: NaN };
     reference.current = null;
 
     (async () => {
       if (!(await DeviceMotion.isAvailableAsync())) return;
       const perm = await DeviceMotion.requestPermissionsAsync();
       if (!perm.granted || cancelled) return;
-      DeviceMotion.setUpdateInterval(16);
+      DeviceMotion.setUpdateInterval(20);
       sub = DeviceMotion.addListener(({ rotation }) => {
         if (!rotation) return;
-        const now = anglesFromRotation(rotation.alpha, rotation.beta, rotation.gamma);
-        if (!reference.current) reference.current = now;
-        const ref = reference.current;
-        const horizontal =
-          modeRef.current === 'look' ? wrapAngle(now.heading - ref.heading) : wrapAngle(now.roll - ref.roll);
-        onDelta.current?.({ horizontal, vertical: now.pitch - ref.pitch });
+        const r = rotationMatrix(rotation.alpha, rotation.beta, rotation.gamma);
+        if (!reference.current) reference.current = r;
+        const rel = relativeRotation(reference.current, r);
+        // Page-turn right (+turn) and steering clockwise (−steer) both orbit the same way.
+        const delta = { horizontal: rel.turn - rel.steer, vertical: rel.tilt };
+        if (
+          Math.abs(delta.horizontal - last.horizontal) < DEADZONE &&
+          Math.abs(delta.vertical - last.vertical) < DEADZONE
+        ) {
+          return;
+        }
+        last = delta;
+        onDelta.current?.(delta);
       });
     })();
 

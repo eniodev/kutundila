@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Canvas } from '@react-three/fiber/native';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Canvas, invalidate } from '@react-three/fiber/native';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -50,7 +50,9 @@ export default function ViewerScreen({ route, navigation }: Props) {
   const gyro = settings.gyroEnabled;
 
   const [state, setState] = useState<LoadState>({ status: 'loading' });
-  const [camera, setCamera] = useState<CameraState | null>(null);
+  const cameraState = useRef<CameraState | null>(null);
+  /** Latest gyro delta, shown in the HUD so it's obvious whether the sensor is driving the camera. */
+  const gyroDelta = useRef<OrientationDelta | null>(null);
   const orbit = useRef<OrbitState>(createOrbitState(1));
   /** Orbit pose that gyro deltas are applied on top of (set on load, recenter and mode switch). */
   const base = useRef<OrbitState>(createOrbitState(1));
@@ -64,12 +66,10 @@ export default function ViewerScreen({ route, navigation }: Props) {
     const { gyroSensitivity: k, gyroInvert } = settingsRef.current;
     s.azimuth = base.current.azimuth + (gyroInvert ? -1 : 1) * d.horizontal * k;
     s.elevation = clamp(base.current.elevation - d.vertical * k, ELEVATION_MIN, ELEVATION_MAX);
+    gyroDelta.current = d;
+    invalidate();
   });
-  const { recenter: recenterSensor } = useDeviceOrientation(
-    gyro && state.status === 'ready',
-    settings.gyroMode,
-    onDelta,
-  );
+  const { recenter: recenterSensor } = useDeviceOrientation(gyro && state.status === 'ready', onDelta);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,12 +103,15 @@ export default function ViewerScreen({ route, navigation }: Props) {
     fresh.distance = orbit.current.distance; // keep the zoom, reset the angles
     base.current = { ...fresh };
     Object.assign(orbit.current, fresh);
+    gyroDelta.current = null;
     recenterSensor();
+    invalidate();
   }, [state, recenterSensor]);
 
   const setGyro = (enabled: boolean) => {
     if (enabled === gyro) return;
     base.current = { ...orbit.current }; // continue from the current view
+    gyroDelta.current = null;
     recenterSensor();
     update({ gyroEnabled: enabled });
   };
@@ -117,7 +120,8 @@ export default function ViewerScreen({ route, navigation }: Props) {
     <View style={styles.root}>
       {state.status === 'ready' && (
         <>
-          <Canvas style={StyleSheet.absoluteFill} camera={{ fov: 60 }}>
+          {/* Render on demand: only when the camera or the scene changes (saves CPU/GPU and battery). */}
+          <Canvas style={StyleSheet.absoluteFill} camera={{ fov: 60 }} frameloop="demand">
             <color attach="background" args={[colors.bg]} />
             <ambientLight intensity={0.6} />
             <directionalLight position={[5, 10, 7]} intensity={1.4} />
@@ -132,7 +136,7 @@ export default function ViewerScreen({ route, navigation }: Props) {
               radius={state.model.radius}
               // Touch input is already smooth; the smoothing setting is mainly for noisy gyro data.
               smoothing={gyro ? settings.smoothing : Math.max(settings.smoothing, 0.25)}
-              onCameraState={setCamera}
+              cameraState={cameraState}
             />
           </Canvas>
 
@@ -145,13 +149,11 @@ export default function ViewerScreen({ route, navigation }: Props) {
             pointerEvents="box-none"
             style={[styles.overlay, { paddingTop: insets.top + 56, paddingBottom: insets.bottom + 16 }]}
           >
-            <Hud camera={camera} model={state.model} />
+            <Hud cameraState={cameraState} gyroDelta={gyro ? gyroDelta : null} model={state.model} />
             <View pointerEvents="box-none" style={styles.bottom}>
               {gyro && (
                 <Text style={styles.tip}>
-                  {settings.gyroMode === 'tilt'
-                    ? 'Rotate the phone like a steering wheel and tilt it up/down. Pinch to zoom.'
-                    : 'Point the phone around: turn left/right and tilt up/down. Pinch to zoom.'}
+                  Turn or steer the phone to orbit, tilt it to change height. Pinch to zoom.
                 </Text>
               )}
               <View style={styles.segment}>
@@ -194,7 +196,28 @@ export default function ViewerScreen({ route, navigation }: Props) {
   );
 }
 
-function Hud({ camera, model }: { camera: CameraState | null; model: LoadedPly }) {
+const DEG = 180 / Math.PI;
+
+/** Polls the camera ref at ~10 Hz, so only this small component re-renders. */
+function Hud({
+  cameraState,
+  gyroDelta,
+  model,
+}: {
+  cameraState: RefObject<CameraState | null>;
+  gyroDelta: RefObject<OrientationDelta | null> | null;
+  model: LoadedPly;
+}) {
+  const [camera, setCamera] = useState<CameraState | null>(null);
+  const [delta, setDelta] = useState<OrientationDelta | null>(null);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setCamera((prev) => (prev === cameraState.current ? prev : cameraState.current));
+      setDelta(gyroDelta?.current ?? null);
+    }, 100);
+    return () => clearInterval(id);
+  }, [cameraState, gyroDelta]);
+
   const d = model.dimensions;
   const isMesh = model.header.faceCount > 0;
   return (
@@ -215,6 +238,11 @@ function Hud({ camera, model }: { camera: CameraState | null; model: LoadedPly }
         Map {fmt(d.x)} × {fmt(d.z)} × {fmt(d.y)} m (W×D×H) · {fmtInt(model.header.vertexCount)}{' '}
         {isMesh ? 'vertices' : 'points'}
       </Text>
+      {gyroDelta && (
+        <Text style={styles.hudLine}>
+          Gyro {delta ? `turn ${fmt(delta.horizontal * DEG, 1)}°  tilt ${fmt(delta.vertical * DEG, 1)}°` : 'waiting for sensor…'}
+        </Text>
+      )}
     </View>
   );
 }

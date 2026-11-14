@@ -58,12 +58,15 @@ CameraState (memory only): position, azimuth, elevation (deg), distance (m).
 - Camera: spherical coords, lookAt origin; x = r·cos(e)·sin(a), y = r·sin(e), z = r·cos(e)·cos(a).
   Gesture/sensor input writes to refs; useFrame reads the refs; HUD state is throttled to ~10 Hz.
 - Gestures: RNGH Pan + Pinch (Simultaneous), `.runOnJS(true)`. Don't use drei OrbitControls.
-- Gyro: DeviceMotion `rotation` (not raw Gyroscope), setUpdateInterval(16). Raw beta/gamma hit gimbal
-  lock when the phone is upright, so `anglesFromRotation` (src/hooks/useDeviceOrientation.ts)
-  derives heading/pitch from the back-of-phone direction and roll from gravity. Modes: 'tilt'
-  (steering roll → azimuth) and 'look' (heading → azimuth); pitch → elevation in both. Deltas are
-  relative to a reference pose captured on enable/recenter, applied on top of a base orbit pose.
-  Lerp smoothing, elev clamp [0.1, 1.4], invert setting. Pinch still zooms in gyro mode.
+- Gyro: DeviceMotion `rotation` (not raw Gyroscope), 20 ms interval. World-referenced Euler angles hit
+  gimbal lock (upright) and blow up near flat, so `relativeRotation` (src/hooks/useDeviceOrientation.ts)
+  decomposes R0ᵀ·R (rotation since the reference pose, in the phone's own frame) into turn/tilt/steer.
+  horizontal = turn − steer → azimuth, tilt → elevation, relative to a base orbit pose captured on
+  enable/recenter. Deadzone ~0.1°, lerp smoothing, elev clamp [0.1, 1.4], invert setting.
+  Pinch still zooms in gyro mode.
+- Rendering: Canvas frameloop="demand". Inputs call `invalidate()`; OrbitCamera keeps invalidating
+  until the smoothed camera reaches its target. The HUD polls a ref at 10 Hz, so ViewerScreen
+  doesn't re-render. expo-gl always renders at native DPR (fiber ignores a dpr prop on native).
 - Color by height: cache the generated color buffer and keep the original colors so switching is instant.
 
 ## Structure

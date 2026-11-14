@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useSettings } from '../hooks/useSettings';
 import { colors } from '../theme';
-import type { ColorMode, GyroMode, RootStackParamList } from '../types';
+import type { ColorMode, RootStackParamList } from '../types';
 import { fmt } from '../utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
@@ -47,19 +47,9 @@ export default function SettingsScreen({ navigation }: Props) {
 
       <Text style={styles.section}>Gyroscope</Text>
       <View style={styles.card}>
-        <Text style={styles.label}>Control</Text>
-        <Segmented<GyroMode>
-          value={settings.gyroMode}
-          options={[
-            { label: 'Steering tilt', value: 'tilt' },
-            { label: 'Look around', value: 'look' },
-          ]}
-          onChange={(gyroMode) => update({ gyroMode })}
-        />
         <Text style={styles.hint}>
-          {settings.gyroMode === 'tilt'
-            ? 'Rotate the phone in the screen plane (like a steering wheel) to orbit; tilt it up/down to change elevation.'
-            : 'Turn your body left/right to orbit; tilt the phone up/down to change elevation.'}
+          Turn the phone left/right (or rotate it like a steering wheel) to orbit; tilt it towards or away
+          from you to change the height. Movement is measured from where you last pressed Recenter.
         </Text>
         <Divider />
         <SliderRow

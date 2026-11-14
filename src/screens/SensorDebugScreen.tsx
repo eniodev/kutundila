@@ -2,7 +2,7 @@ import { DeviceMotion, type DeviceMotionMeasurement } from 'expo-sensors';
 import { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { anglesFromRotation } from '../hooks/useDeviceOrientation';
+import { relativeRotation, rotationMatrix } from '../hooks/useDeviceOrientation';
 import { colors } from '../theme';
 import { fmt } from '../utils/format';
 
@@ -33,6 +33,7 @@ export default function SensorDebugScreen() {
   const range = useRef<Range>(emptyRange());
   const count = useRef(0);
   const [, force] = useState(0);
+  const zero = useRef<ReturnType<typeof rotationMatrix> | null>(null);
 
   useEffect(() => {
     let sub: { remove: () => void } | undefined;
@@ -122,16 +123,19 @@ export default function SensorDebugScreen() {
 
       {rot && (
         <View style={styles.card}>
-          <Text style={styles.axis}>Derived (used by the gyro camera)</Text>
+          <Text style={styles.axis}>Relative to zero (used by the gyro camera)</Text>
           {(() => {
-            const d = anglesFromRotation(rot.alpha, rot.beta, rot.gamma);
+            const r = rotationMatrix(rot.alpha, rot.beta, rot.gamma);
+            zero.current ??= r;
+            const d = relativeRotation(zero.current, r);
             return (
               <>
-                <Text style={styles.value}>heading {fmt(d.heading * DEG, 1)}°</Text>
-                <Text style={styles.value}>pitch {fmt(d.pitch * DEG, 1)}°</Text>
-                <Text style={styles.value}>roll {fmt(d.roll * DEG, 1)}°</Text>
+                <Text style={styles.value}>turn {fmt(d.turn * DEG, 1)}°</Text>
+                <Text style={styles.value}>tilt {fmt(d.tilt * DEG, 1)}°</Text>
+                <Text style={styles.value}>steer {fmt(d.steer * DEG, 1)}°</Text>
                 <Text style={styles.hint}>
-                  heading: where the back of the phone points · pitch: up/down · roll: steering-wheel rotation
+                  turn: left/right like a page · tilt: top towards/away · steer: steering wheel. Each movement
+                  should change only its own value, whatever angle you hold the phone at.
                 </Text>
               </>
             );
@@ -143,15 +147,15 @@ export default function SensorDebugScreen() {
         style={({ pressed }) => [styles.button, pressed && { opacity: 0.6 }]}
         onPress={() => {
           range.current = emptyRange();
+          zero.current = null;
           force((n) => n + 1);
         }}
       >
-        <Text style={styles.buttonText}>Reset min / max</Text>
+        <Text style={styles.buttonText}>Reset zero and min / max</Text>
       </Pressable>
 
       <Text style={styles.help}>
-        Hold the phone upright (screen facing you), then tilt it left/right, forward/back and turn
-        around. The derived angles below are what the gyro camera uses.
+        Hold the phone however you like, press reset, then turn, tilt and steer it.
       </Text>
     </ScrollView>
   );

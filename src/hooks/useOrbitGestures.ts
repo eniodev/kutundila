@@ -1,3 +1,4 @@
+import { invalidate } from '@react-three/fiber/native';
 import type { RefObject } from 'react';
 import { usePanGesture, usePinchGesture, useSimultaneousGestures } from 'react-native-gesture-handler';
 
@@ -19,6 +20,7 @@ export function useOrbitGestures(orbit: RefObject<OrbitState>, { rotate = true }
       if (!s) return;
       s.azimuth -= e.changeX * ROTATE_SPEED;
       s.elevation = clamp(s.elevation + e.changeY * ROTATE_SPEED, ELEVATION_MIN, ELEVATION_MAX);
+      invalidate();
     },
   });
 
@@ -28,6 +30,7 @@ export function useOrbitGestures(orbit: RefObject<OrbitState>, { rotate = true }
       const s = orbit.current;
       if (!s || !e.scaleChange) return;
       s.distance = clamp(s.distance / e.scaleChange, s.minDistance, s.maxDistance);
+      invalidate();
     },
   });
 

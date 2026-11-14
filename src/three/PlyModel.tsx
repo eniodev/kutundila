@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { invalidate } from '@react-three/fiber/native';
+import { useEffect, useMemo } from 'react';
 import { DoubleSide, type BufferGeometry } from 'three';
 
 import type { ColorMode } from '../types';
@@ -16,6 +17,10 @@ const DEFAULT_COLOR = '#4fc3f7';
 /** Renders a parsed PLY as points (no faces) or a lit mesh (with faces). */
 export function PlyModel({ geometry, hasFaces, pointSize, colorMode }: Props) {
   const vertexColors = useMemo(() => applyColorMode(geometry, colorMode), [geometry, colorMode]);
+  // Swapping the colour attribute isn't a prop change, so ask for a frame (frameloop="demand").
+  useEffect(() => {
+    invalidate();
+  }, [vertexColors, colorMode, pointSize]);
   const color = vertexColors ? '#ffffff' : DEFAULT_COLOR;
   // Changing vertexColors needs a shader recompile, so remount the material when it flips.
   const key = vertexColors ? 'vc' : 'flat';
