@@ -94,7 +94,7 @@ export default function SensorDebugScreen() {
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       <Text style={styles.muted}>
-        {Platform.OS} · {hz} Hz · orientation {m?.orientation ?? '—'}
+        {Platform.OS} · {hz} Hz · orientation {m?.orientation ?? 'n/a'}
       </Text>
 
       {AXES.map((a) => {
@@ -116,8 +116,8 @@ export default function SensorDebugScreen() {
               <View style={[styles.barDot, { left: `${pct * 100}%` }]} />
             </View>
             <Text style={styles.muted}>
-              min {Number.isFinite(r.min) ? fmt(r.min * DEG, 1) : '—'}° · max{' '}
-              {Number.isFinite(r.max) ? fmt(r.max * DEG, 1) : '—'}°
+              min {Number.isFinite(r.min) ? fmt(r.min * DEG, 1) : 'n/a'}° · max{' '}
+              {Number.isFinite(r.max) ? fmt(r.max * DEG, 1) : 'n/a'}°
             </Text>
           </View>
         );

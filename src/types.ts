@@ -21,7 +21,8 @@ export type MapMeta = {
   center: Vec3;
 };
 
-export type ColorMode = 'original' | 'height';
+/** 'errors' uses the per-point evaluation class (only maps prepared with scripts/prepare-compare.mjs). */
+export type ColorMode = 'original' | 'height' | 'errors';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 

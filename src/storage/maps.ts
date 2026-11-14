@@ -20,6 +20,11 @@ export function mapFile(id: string): File {
   return new File(mapsDirectory(), `${id}.ply`);
 }
 
+/** Thumbnail captured the first time a map is opened in 3D (may not exist). */
+export function mapThumbnail(id: string): File {
+  return new File(mapsDirectory(), `${id}.jpg`);
+}
+
 export async function listMaps(): Promise<MapMeta[]> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
@@ -43,6 +48,8 @@ export async function saveMap(map: MapMeta): Promise<void> {
 export async function deleteMap(id: string): Promise<void> {
   const file = mapFile(id);
   if (file.exists) file.delete();
+  const thumb = mapThumbnail(id);
+  if (thumb.exists) thumb.delete();
   const maps = (await listMaps()).filter((m) => m.id !== id);
   await AsyncStorage.setItem(KEY, JSON.stringify(maps));
 }

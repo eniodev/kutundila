@@ -12,6 +12,8 @@ type Props = {
   smoothing: number;
   /** Written every rendered frame; the HUD polls it, so the screen doesn't re-render. */
   cameraState: RefObject<CameraState | null>;
+  /** Slowly orbit around the model (demo mode). */
+  autoRotate?: boolean;
 };
 
 const RAD2DEG = 180 / Math.PI;
@@ -21,7 +23,7 @@ const RAD2DEG = 180 / Math.PI;
  * Works with frameloop="demand": inputs call invalidate(), and this keeps requesting frames
  * only until the smoothed camera reaches its target.
  */
-export function OrbitCamera({ orbit, radius, smoothing, cameraState }: Props) {
+export function OrbitCamera({ orbit, radius, smoothing, cameraState, autoRotate = false }: Props) {
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
   const invalidate = useThree((s) => s.invalidate);
   const target = useMemo(() => new Vector3(), []);
@@ -35,9 +37,17 @@ export function OrbitCamera({ orbit, radius, smoothing, cameraState }: Props) {
     invalidate();
   }, [camera, radius, invalidate]);
 
-  useFrame(() => {
+  useEffect(() => {
+    if (autoRotate) invalidate();
+  }, [autoRotate, invalidate]);
+
+  useFrame((_, delta) => {
     const s = orbit.current;
     if (!s) return;
+    if (autoRotate) {
+      s.azimuth += Math.min(delta, 0.1) * 0.35; // rad/s
+      invalidate();
+    }
     orbitToPosition(s, target);
     if (first.current) {
       camera.position.copy(target);

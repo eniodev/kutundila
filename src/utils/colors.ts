@@ -30,15 +30,48 @@ export function heightColorAttribute(geometry: BufferGeometry): BufferAttribute 
   return new BufferAttribute(colors, 3);
 }
 
+// Evaluation classes (scripts/prepare-compare.mjs), same colours as twin-mapping's error_cloud.ply.
+export const ERROR_CLASSES = [
+  { label: 'Static structure', color: '#aaaaaa', rgb: [0.67, 0.67, 0.67] },
+  { label: 'Small error', color: '#ffdc00', rgb: [1, 0.86, 0] },
+  { label: 'Other error (drift, noise)', color: '#285ae6', rgb: [0.16, 0.35, 0.9] },
+  { label: 'Dynamic residue (people, forklifts)', color: '#e61414', rgb: [0.9, 0.08, 0.08] },
+] as const;
+
+function errorColorAttribute(geometry: BufferGeometry): BufferAttribute | null {
+  const cls = geometry.getAttribute('errorClass');
+  if (!cls) return null;
+  const colors = new Float32Array(cls.count * 3);
+  for (let i = 0; i < cls.count; i++) {
+    const rgb = ERROR_CLASSES[Math.min(3, Math.max(0, Math.round(cls.getX(i))))].rgb;
+    colors[i * 3] = rgb[0];
+    colors[i * 3 + 1] = rgb[1];
+    colors[i * 3 + 2] = rgb[2];
+  }
+  return new BufferAttribute(colors, 3);
+}
+
 /**
  * Switches the geometry's 'color' attribute between the file's colours and the height gradient.
  * Both are cached on the geometry, so switching back and forth is instant.
  * Returns whether the geometry now has vertex colours.
  */
-export function applyColorMode(geometry: BufferGeometry, mode: 'original' | 'height'): boolean {
-  const data = geometry.userData as { originalColor?: BufferAttribute | null; heightColor?: BufferAttribute };
+export function applyColorMode(geometry: BufferGeometry, mode: 'original' | 'height' | 'errors'): boolean {
+  const data = geometry.userData as {
+    originalColor?: BufferAttribute | null;
+    heightColor?: BufferAttribute;
+    errorColor?: BufferAttribute | null;
+  };
   if (data.originalColor === undefined) {
     data.originalColor = (geometry.getAttribute('color') as BufferAttribute | undefined) ?? null;
+  }
+  if (mode === 'errors') {
+    if (data.errorColor === undefined) data.errorColor = errorColorAttribute(geometry);
+    if (data.errorColor) {
+      geometry.setAttribute('color', data.errorColor);
+      return true;
+    }
+    // No evaluation data: fall back to the original colours.
   }
   if (mode === 'height') {
     data.heightColor ??= heightColorAttribute(geometry);

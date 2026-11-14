@@ -8,6 +8,8 @@ export type PlyHeader = {
   vertexCount: number;
   faceCount: number;
   hasColor: boolean;
+  /** Per-point evaluation class (static / small error / other error / dynamic residue). */
+  hasErrorClass: boolean;
   headerLength: number;
 };
 
@@ -39,6 +41,7 @@ export function parsePlyHeader(bytes: Uint8Array): PlyHeader {
   let vertexCount = 0;
   let faceCount = 0;
   let hasColor = false;
+  let hasErrorClass = false;
   let current = '';
 
   for (const raw of text.slice(0, endIdx).split('\n')) {
@@ -55,17 +58,22 @@ export function parsePlyHeader(bytes: Uint8Array): PlyHeader {
       case 'property': {
         const name = parts[parts.length - 1];
         if (current === 'vertex' && /^(red|r|diffuse_red)$/.test(name)) hasColor = true;
+        if (current === 'vertex' && name === 'class') hasErrorClass = true;
         break;
       }
     }
   }
 
   if (!format) throw new Error('PLY format not specified.');
-  return { format, vertexCount, faceCount, hasColor, headerLength };
+  return { format, vertexCount, faceCount, hasColor, hasErrorClass, headerLength };
 }
 
-/** Parses PLY bytes into a centered, Y-up geometry plus metadata. Blocks the JS thread. */
-export function buildPlyGeometry(bytes: Uint8Array, upAxis: UpAxis): LoadedPly {
+/**
+ * Parses PLY bytes into a centered, Y-up geometry plus metadata. Blocks the JS thread.
+ * `center` (in Y-up coordinates) overrides the bounding-box center, so several layers of the same
+ * scene (e.g. before/after maps) stay aligned.
+ */
+export function buildPlyGeometry(bytes: Uint8Array, upAxis: UpAxis, center?: Vec3): LoadedPly {
   const header = parsePlyHeader(bytes);
 
   // PLYLoader needs an ArrayBuffer that starts at the file's first byte.
@@ -74,7 +82,9 @@ export function buildPlyGeometry(bytes: Uint8Array, upAxis: UpAxis): LoadedPly {
       ? (bytes.buffer as ArrayBuffer)
       : (bytes.slice().buffer as ArrayBuffer);
 
-  const geometry = new PLYLoader().parse(buffer);
+  const loader = new PLYLoader();
+  loader.setCustomPropertyNameMapping({ errorClass: ['class'] });
+  const geometry = loader.parse(buffer);
 
   // SLAM/ROS exports are Z-up; three.js is Y-up.
   if (upAxis === 'z') geometry.rotateX(-Math.PI / 2);
@@ -82,8 +92,8 @@ export function buildPlyGeometry(bytes: Uint8Array, upAxis: UpAxis): LoadedPly {
   geometry.computeBoundingBox();
   const box = geometry.boundingBox!;
   const size = box.getSize(new Vector3());
-  const center = box.getCenter(new Vector3());
-  geometry.center();
+  const c = center ? new Vector3(center.x, center.y, center.z) : box.getCenter(new Vector3());
+  geometry.translate(-c.x, -c.y, -c.z);
   geometry.computeBoundingSphere();
 
   if (header.faceCount > 0) {
@@ -97,7 +107,7 @@ export function buildPlyGeometry(bytes: Uint8Array, upAxis: UpAxis): LoadedPly {
     geometry,
     header,
     dimensions: { x: size.x, y: size.y, z: size.z },
-    center: { x: center.x, y: center.y, z: center.z },
+    center: { x: c.x, y: c.y, z: c.z },
     radius: geometry.boundingSphere?.radius || 1,
   };
 }

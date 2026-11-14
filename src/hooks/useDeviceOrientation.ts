@@ -28,7 +28,7 @@ export type RelativeRotation = {
 /**
  * Decomposes Rrel = R0ᵀ·R (rotation in the reference device frame) as Ry(turn)·Rx(tilt)·Rz(steer).
  * Being relative to the reference pose, this is well conditioned whether the phone is upright,
- * tilted or almost flat — unlike world-referenced Euler angles, which hit gimbal lock.
+ * tilted or almost flat, unlike world-referenced Euler angles, which hit gimbal lock.
  */
 export function relativeRotation(r0: Mat3, r: Mat3): RelativeRotation {
   // rel[i][j] = Σk r0[k][i]·r[k][j]

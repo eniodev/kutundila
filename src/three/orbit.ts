@@ -33,3 +33,19 @@ export function orbitToPosition(s: OrbitState, out = new Vector3()): Vector3 {
     s.distance * c * Math.cos(s.azimuth),
   );
 }
+
+export type ViewPreset = 'top' | 'front' | 'side' | 'iso';
+
+/** Orbit angles for the camera presets (distance unchanged). */
+export function presetAngles(preset: ViewPreset): { azimuth: number; elevation: number } {
+  switch (preset) {
+    case 'top':
+      return { azimuth: 0, elevation: 1.553 }; // just short of 90° so lookAt keeps a stable up vector
+    case 'front':
+      return { azimuth: 0, elevation: 0.12 };
+    case 'side':
+      return { azimuth: Math.PI / 2, elevation: 0.12 };
+    default:
+      return { azimuth: Math.PI / 4, elevation: 0.6 };
+  }
+}

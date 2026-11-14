@@ -1,10 +1,10 @@
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { deleteMap, getMap } from '../storage/maps';
+import { deleteMap, getMap, mapThumbnail } from '../storage/maps';
 import { makeStyles, useTheme } from '../theme';
 import type { MapMeta, RootStackParamList, UpAxis } from '../types';
 import { fmt, fmtBytes, fmtDate, fmtInt } from '../utils/format';
@@ -19,11 +19,15 @@ export default function MapDetailsScreen({ route, navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [map, setMap] = useState<MapMeta | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
+  const [thumb, setThumb] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       getMap(mapId).then((m) => {
         setMap(m ?? null);
+        const t = m && mapThumbnail(m.id);
+        // Cache-bust so a thumbnail captured after the first visit shows up.
+        setThumb(t?.exists ? `${t.uri}?v=${t.modificationTime ?? Date.now()}` : null);
         if (m) navigation.setOptions({ title: m.name });
       });
     }, [mapId, navigation]),
@@ -83,8 +87,14 @@ export default function MapDetailsScreen({ route, navigation }: Props) {
   return (
     <ScrollView style={styles.root} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
       <View style={styles.preview}>
-        <Text style={styles.previewIcon}>{map.hasFaces ? '◆' : '⁘'}</Text>
-        <Text style={styles.muted}>{map.hasFaces ? '3D mesh' : '3D point cloud'}</Text>
+        {thumb ? (
+          <Image source={{ uri: thumb }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        ) : (
+          <>
+            <Text style={styles.previewIcon}>{map.hasFaces ? '◆' : '⁘'}</Text>
+            <Text style={styles.muted}>Open it in 3D once to create a preview</Text>
+          </>
+        )}
       </View>
 
       <View style={styles.card}>
@@ -137,6 +147,7 @@ const useStyles = makeStyles((colors) =>
   content: { padding: 16, gap: 14 },
   muted: { color: colors.textMuted },
   preview: {
+    overflow: 'hidden',
     height: 160,
     backgroundColor: colors.surface,
     borderRadius: 12,

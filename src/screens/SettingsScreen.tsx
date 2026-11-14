@@ -55,9 +55,14 @@ export default function SettingsScreen({ navigation }: Props) {
           options={[
             { label: 'Original', value: 'original' },
             { label: 'By height', value: 'height' },
+            { label: 'Errors', value: 'errors' },
           ]}
           onChange={(colorMode) => update({ colorMode })}
         />
+        <Text style={styles.hint}>
+          Errors colours each point by its evaluation class (red = residue left by people and forklifts). Only
+          maps prepared with evaluation data have it; others show their original colours.
+        </Text>
       </View>
 
       <Text style={styles.section}>Gyroscope</Text>

@@ -73,12 +73,21 @@ CameraState (memory only): position, azimuth, elevation (deg), distance (m).
 src/navigation, src/screens, src/three (PlyModel, OrbitCamera), src/hooks (useDeviceOrientation,
 useSettings), src/storage (maps, settings), src/utils (ply, colors), src/types.ts.
 Bundled models in assets/models/ (metro assetExts includes 'ply'; credits in assets/models/CREDITS.md):
-sim_facility (own final map, Z-up), bundlefusion_copyroom (real RGB-D SLAM scan, levelled, Z-up),
-icl_livingroom / icl_office (synthetic, no colour, Y-up), stanford_bunny (ASCII mesh, Y-up).
-Scripts: `prepare-maps.mjs` voxel-downsamples any PLY (handles PCL exports with normals/camera
-element; `--no-color`); `align-mesh.mjs` levels tilted mesh scans (face-normal up estimate +
-Manhattan wall heading); `generate-samples.mjs` writes synthetic test files to test-maps/generated.
-`test-maps/` (gitignored) holds real twin-mapping maps for import testing.
+facility_before/after (+ facility_trajectory.json; world frame, Z-up, per-point `class` property),
+bundlefusion_copyroom (real scan, levelled, Z-up), icl_livingroom / icl_office (no colour, Y-up),
+stanford_bunny (ASCII mesh, Y-up). Samples can have several layers (before/after); later layers
+reuse the first layer's center (`buildPlyGeometry(..., center)`) so they stay aligned.
+Scripts (shared reader in scripts/lib/ply-read.mjs): `prepare-maps.mjs` (voxel downsampling,
+`--no-color`), `align-mesh.mjs` (levels tilted mesh scans), `prepare-compare.mjs` (twin-mapping
+run → rgb + evaluation class in the world frame, map→world offset −10.5, −6.75; trajectory JSON),
+`generate-samples.mjs` (synthetic files to test-maps/generated). `test-maps/` is gitignored.
+
+## Viewer features
+Views panel (top/front/side/3D presets, auto-rotate), Tools panel (measure by tap + raycast,
+height cut via clipping plane with renderer.localClippingEnabled, colour Original/Height/Errors,
+robot path, share screenshot via GLView.takeSnapshotAsync + expo-sharing). Imported maps get a
+thumbnail (`mapThumbnail(id)`) captured on first open. Light/dark/system theme (`useTheme`,
+`makeStyles` in src/theme.ts). UI text avoids em dashes.
 
 ## Source maps (~/twin-mapping)
 Final maps: `data/runs/<RUN>/map/map_clean.ply` (DUFOMap-cleaned, xyz+rgb, Z-up, ~1.2M points,
