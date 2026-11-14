@@ -23,7 +23,7 @@ It runs in **Expo Go**: no custom native modules and no development build.
   - **Tools:** measure the distance between two tapped points, cut away everything above a height
     (floor-plan view), colour by original colour, height or evaluation error, show the robot's path,
     and share a screenshot.
-- **Before and after:** the bundled simulated facility switches between the raw SLAM map and the
+- **Before and after:** two bundled samples of the simulated facility: the raw SLAM map and the
   filtered, DUFOMap-cleaned map. The *Errors* colour mode shows the residue left by people and
   forklifts in red (29,773 residue points before, 1,341 after).
 - **Settings:** light, dark or system theme, point size, colour mode, gyro sensitivity, smoothing and
@@ -33,7 +33,7 @@ It runs in **Expo Go**: no custom native modules and no development build.
 
 | Model | Source |
 |---|---|
-| Simulated facility, before and after | This project (twin-mapping), with robot trajectory and evaluation classes |
+| Simulated facility: BEFORE and AFTER filtering (two samples) | This project (twin-mapping), with robot trajectory and evaluation classes |
 | Copy room (real scan) | BundleFusion, Stanford, CC BY-NC-SA 4.0 |
 | Living room, Office | Augmented ICL-NUIM, CC BY 3.0 |
 | Stanford Bunny | Stanford 3D Scanning Repository |

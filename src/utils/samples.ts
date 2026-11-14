@@ -30,11 +30,11 @@ const single = (module: number): SampleLayer[] => [{ key: 'main', label: 'Map', 
 /** Bundled models, so demos don't depend on importing files. All downsampled for mobile. */
 export const SAMPLES: Sample[] = [
   {
-    id: 'facility',
-    name: 'Simulated facility: before and after',
+    id: 'facility-before',
+    name: 'Simulated facility: BEFORE filtering',
     description:
-      'This project’s warehouse map with people and forklifts moving. Compare the raw SLAM map with the filtered and cleaned one, and colour by errors to see the residue they left.',
-    credit: 'twin-mapping project · runs sim_baseline_1 and sim_semgeo_1 · 7 cm voxels',
+      'Raw SLAM map of this project’s warehouse, with no filtering. People and forklifts walking past left traces in the map. Open Tools and pick “Errors” to see them in red.',
+    credit: 'twin-mapping project · run sim_baseline_1 · 7 cm voxels',
     upAxis: 'z',
     layers: [
       {
@@ -43,6 +43,19 @@ export const SAMPLES: Sample[] = [
         note: 'Raw RTAB-Map cloud, no filtering (baseline)',
         module: require('../../assets/models/facility_before.ply'),
       },
+    ],
+    trajectory: require('../../assets/models/facility_trajectory.json'),
+    // From the run's metrics.json (dynamic residue = points within 15 cm of where movers were seen).
+    stats: { before: { residue: 29773, people: 13408, forklifts: 16365 } },
+  },
+  {
+    id: 'facility-after',
+    name: 'Simulated facility: AFTER filtering',
+    description:
+      'The same warehouse after the semantic + geometric filter during SLAM and DUFOMap cleaning. Almost all traces of people and forklifts are gone. Compare it with the BEFORE map using “Errors”.',
+    credit: 'twin-mapping project · run sim_semgeo_1 · 7 cm voxels',
+    upAxis: 'z',
+    layers: [
       {
         key: 'after',
         label: 'After',
@@ -50,13 +63,8 @@ export const SAMPLES: Sample[] = [
         module: require('../../assets/models/facility_after.ply'),
       },
     ],
-    defaultLayer: 1,
     trajectory: require('../../assets/models/facility_trajectory.json'),
-    // From each run's metrics.json (dynamic residue = points within 15 cm of where movers were seen).
-    stats: {
-      before: { residue: 29773, people: 13408, forklifts: 16365 },
-      after: { residue: 1341, people: 18, forklifts: 1323 },
-    },
+    stats: { after: { residue: 1341, people: 18, forklifts: 1323 } },
   },
   {
     id: 'copyroom',

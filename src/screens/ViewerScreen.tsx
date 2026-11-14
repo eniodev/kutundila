@@ -308,7 +308,7 @@ export default function ViewerScreen({ route, navigation }: Props) {
               cameraState={cameraState}
               gyroDelta={gyro ? gyroDelta : null}
               model={model}
-              layer={scene.layers.length > 1 ? layer : null}
+              layer={layer.note ? layer : null}
               stats={scene.stats?.[layer.key]}
               legend={settings.colorMode === 'errors' && hasErrors}
               distance={measureDistance}
