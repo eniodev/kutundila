@@ -1,32 +1,104 @@
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useLayoutEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { listMaps } from '../storage/maps';
 import { colors } from '../theme';
-import type { RootStackParamList } from '../types';
+import type { MapMeta, RootStackParamList } from '../types';
+import { fmt, fmtInt } from '../utils/format';
+import { importPly, LARGE_POINT_COUNT, pickPlyFile, type PickedPly } from '../utils/importMap';
 import { SAMPLES } from '../utils/samples';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Library'>;
 
+const confirmLarge = (picked: PickedPly) =>
+  new Promise<boolean>((resolve) =>
+    Alert.alert(
+      'Mapa muito grande',
+      `Este ficheiro tem ${fmtInt(picked.header.vertexCount)} pontos. A importação pode ser lenta ou ` +
+        'falhar por falta de memória. Recomenda-se reduzir a densidade (voxel grid) antes de importar.',
+      [
+        { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Importar mesmo assim', onPress: () => resolve(true) },
+      ],
+      { cancelable: true, onDismiss: () => resolve(false) },
+    ),
+  );
+
 export default function LibraryScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const [maps, setMaps] = useState<MapMeta[] | null>(null);
+  const [importing, setImporting] = useState(false);
 
-  const onImport = () => {
-    // Step 3: document picker + copy + metadata.
-    Alert.alert('Importar PLY', 'A importação de ficheiros chega na próxima fase.');
+  // TEMP (step 2b): entry point for the sensor test screen.
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable hitSlop={8} onPress={() => navigation.navigate('SensorDebug')}>
+          <Text style={{ color: colors.accent, fontWeight: '600' }}>Sensores</Text>
+        </Pressable>
+      ),
+    });
+  }, [navigation]);
+
+  useFocusEffect(
+    useCallback(() => {
+      listMaps().then(setMaps);
+    }, []),
+  );
+
+  const onImport = async () => {
+    try {
+      const picked = await pickPlyFile();
+      if (!picked) return;
+      if (picked.header.vertexCount > LARGE_POINT_COUNT && !(await confirmLarge(picked))) return;
+
+      setImporting(true);
+      const map = await importPly(picked);
+      setMaps(await listMaps());
+      navigation.navigate('MapDetails', { mapId: map.id });
+    } catch (e) {
+      Alert.alert('Não foi possível importar', e instanceof Error ? e.message : String(e));
+    } finally {
+      setImporting(false);
+    }
   };
 
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 96 }]}>
         <Text style={styles.section}>Os meus mapas</Text>
-        <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>Ainda não há mapas</Text>
-          <Text style={styles.emptyText}>
-            Exporte um mapa do robô em formato PLY, copie-o para o telemóvel e toque em
-            “+ Importar PLY”.
-          </Text>
-        </View>
+        {maps === null ? (
+          <ActivityIndicator color={colors.accent} />
+        ) : maps.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyTitle}>Ainda não há mapas</Text>
+            <Text style={styles.emptyText}>
+              Exporte um mapa do robô em formato PLY, copie-o para o telemóvel e toque em
+              “+ Importar PLY”.
+            </Text>
+          </View>
+        ) : (
+          maps.map((m) => (
+            <Pressable
+              key={m.id}
+              style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+              onPress={() => navigation.navigate('MapDetails', { mapId: m.id })}
+            >
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle} numberOfLines={1}>{m.name}</Text>
+                <Text style={styles.badge}>{m.hasFaces ? 'Malha' : 'Nuvem de pontos'}</Text>
+              </View>
+              <Text style={styles.cardSub}>
+                {m.format === 'binary' ? 'Binário' : 'ASCII'} · {fmtInt(m.pointCount)}{' '}
+                {m.hasFaces ? 'vértices' : 'pontos'} · {fmt(m.dimensions.x, 1)} × {fmt(m.dimensions.z, 1)} ×{' '}
+                {fmt(m.dimensions.y, 1)} m
+              </Text>
+            </Pressable>
+          ))
+        )}
 
         <Text style={styles.section}>Modelos de teste</Text>
         {SAMPLES.map((s) => (
@@ -42,11 +114,21 @@ export default function LibraryScreen({ navigation }: Props) {
       </ScrollView>
 
       <Pressable
-        style={({ pressed }) => [styles.fab, { bottom: insets.bottom + 24 }, pressed && styles.pressed]}
+        disabled={importing}
+        style={({ pressed }) => [styles.fab, { bottom: insets.bottom + 24 }, (pressed || importing) && styles.pressed]}
         onPress={onImport}
       >
         <Text style={styles.fabText}>+ Importar PLY</Text>
       </Pressable>
+
+      {importing && (
+        <View style={styles.overlay}>
+          <View style={styles.overlayBox}>
+            <ActivityIndicator size="large" color={colors.accent} />
+            <Text style={styles.overlayText}>A importar e a analisar o mapa…</Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -67,7 +149,19 @@ const styles = StyleSheet.create({
   emptyTitle: { color: colors.text, fontSize: 16, fontWeight: '600' },
   emptyText: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
   card: { backgroundColor: colors.surface, borderRadius: 12, padding: 16, gap: 4, borderWidth: 1, borderColor: colors.border },
-  cardTitle: { color: colors.text, fontSize: 16, fontWeight: '600' },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cardTitle: { color: colors.text, fontSize: 16, fontWeight: '600', flexShrink: 1 },
+  badge: {
+    color: colors.accent,
+    fontSize: 11,
+    fontWeight: '600',
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    overflow: 'hidden',
+  },
   cardSub: { color: colors.textMuted, fontSize: 13 },
   pressed: { opacity: 0.7 },
   fab: {
@@ -80,4 +174,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   fabText: { color: '#00131c', fontWeight: '700', fontSize: 15 },
+  overlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
+  overlayBox: { backgroundColor: colors.surface, borderRadius: 14, padding: 24, gap: 14, alignItems: 'center' },
+  overlayText: { color: colors.text },
 });

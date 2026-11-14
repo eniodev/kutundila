@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import LibraryScreen from '../screens/LibraryScreen';
 import MapDetailsScreen from '../screens/MapDetailsScreen';
+import SensorDebugScreen from '../screens/SensorDebugScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ViewerScreen from '../screens/ViewerScreen';
 import { colors } from '../theme';
@@ -27,6 +28,7 @@ export default function RootNavigator() {
           options={{ title: 'Visualizador 3D', headerTransparent: true, headerTintColor: colors.text }}
         />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Definições' }} />
+        <Stack.Screen name="SensorDebug" component={SensorDebugScreen} options={{ title: 'Sensores (teste)' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

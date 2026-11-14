@@ -13,6 +13,7 @@ import { PlyModel } from '../three/PlyModel';
 import { colors } from '../theme';
 import type { CameraState, ModelSource, RootStackParamList } from '../types';
 import { fmt, fmtInt } from '../utils/format';
+import { getMap, mapFile } from '../storage/maps';
 import { nextFrame, readAssetBytes } from '../utils/files';
 import { buildPlyGeometry, type LoadedPly } from '../utils/ply';
 import { getSample } from '../utils/samples';
@@ -32,8 +33,13 @@ async function loadSource(source: ModelSource): Promise<{ model: LoadedPly; name
     await nextFrame();
     return { model: buildPlyGeometry(bytes, sample.upAxis), name: sample.name };
   }
-  // Step 3: imported maps.
-  throw new Error('Abrir mapas importados chega na próxima fase.');
+  const map = await getMap(source.mapId);
+  if (!map) throw new Error('Mapa não encontrado.');
+  const file = mapFile(map.id);
+  if (!file.exists) throw new Error('O ficheiro do mapa já não existe no dispositivo.');
+  const bytes = await file.bytes();
+  await nextFrame();
+  return { model: buildPlyGeometry(bytes, map.upAxis), name: map.name };
 }
 
 export default function ViewerScreen({ route, navigation }: Props) {
@@ -148,7 +154,8 @@ function Hud({ camera, model }: { camera: CameraState | null; model: LoadedPly }
         <Text style={styles.hudLine}>—</Text>
       )}
       <Text style={styles.hudLine}>
-        Mapa {fmt(d.x)} × {fmt(d.y)} × {fmt(d.z)} m · {fmtInt(model.header.vertexCount)} {isMesh ? 'vértices' : 'pontos'}
+        Mapa {fmt(d.x)} × {fmt(d.z)} × {fmt(d.y)} m (L×P×A) · {fmtInt(model.header.vertexCount)}{' '}
+        {isMesh ? 'vértices' : 'pontos'}
       </Text>
     </View>
   );

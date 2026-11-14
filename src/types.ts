@@ -57,4 +57,5 @@ export type RootStackParamList = {
   MapDetails: { mapId: string };
   Viewer: { source: ModelSource };
   Settings: undefined;
+  SensorDebug: undefined;
 };

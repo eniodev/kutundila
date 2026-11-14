@@ -10,6 +10,7 @@ import RootNavigator from './src/navigation/RootNavigator';
 LogBox.ignoreLogs([
   'THREE.Clock: This module has been deprecated',
   'THREE.WebGLRenderer: WEBGL_lose_context extension not supported',
+  'THREE.WebGLRenderer: EXT_color_buffer_float extension not supported',
 ]);
 
 export default function App() {
